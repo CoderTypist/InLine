@@ -74,7 +74,7 @@ contract InLine {
     }
 
     // Change relationship status
-    function situation_change(address _user, Status _status) internal returns (bool) user_exists user_paid {
+    function situation_change(address _user, Status _status) internal user_exists user_paid {
         
         Status previous = subs[_user].status;
         subs[_user].status = _status;
@@ -86,17 +86,17 @@ contract InLine {
         situation_change(_user, Status.SINGLE);
     }
 
-    function now_complicated(address _user) public view user_exists {
+    function now_complicated(address _user) public view {
 
         situation_change(_user, Status.COMPLICATED);
     }
 
-    function now_dating(address _user) public view user_exists {
+    function now_dating(address _user) public view {
 
         situation_change(_user, Status.DATING);
     }
 
-    function now_married(address _primary) public view user_exists {
+    function now_married(address _primary) public view {
 
         situation_change(_user, Status.MARRIED);
     }
