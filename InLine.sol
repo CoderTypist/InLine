@@ -1,104 +1,97 @@
-// This is just pseudo code
-// This is just pseudo code
-// This is just pseudo code
+pragma solidity 0.5.0;
 
 contract InLine {
-
+    
+    // Approximately 5700 blocks per day
+    // Approximately 30 days per month
+    // 5700 * 30 = 171,000
+    uint constant blocksPerMonth = 171000;
+    
     enum Status {
-        SINGLE,
+        
+        SINGLE, 
         COMPLICATED,
-        DATING,
+        DATING, 
         MARRIED
     }
-
-    struct Person {
-
-        uint joined_block;
-        uint expiration_block;
-        Status status;
-        uint last_change;
-    }    
-
-    mapping(address => Person) subs;
-
-    event Change(
-
-        address user;
-        Status status_before;
-        Status status_after;
-
-    );
-
-    event Proof(
-
-        address user;
-        address receiver;
-        Status status;
-    );
-
-    modifier user_exists() {
-
-        assert(subs[_user] != 0);
-        _;
-    }
-
-    modifier user_paid() {
-
-        assert(subs[_user.expiration_block] < block.number);
-        _;
-    }
-
-    // Subscribe
-    function subscribe(address _user, Status _status) public payable {
+    
+    struct User {
         
-        // person must not have already joined
-        assert(subs[_primary] == 0);
-
-        subs[_primary] = Person(99999999999999, _status, block.number);
-    }
-
-    function add_funds(address _user) public payable user_exists {
-
-        // person must have already joined 
-        assert(subs[_user] != 0);
-    }
-
-    function prove_to(address _user, address _recipient) public view user_exists user_paid {
-
-        emit Proof(_user, _recipient, subs[_user].status)
-    }
-
-    function declare(address _user) public view {
-
-        prove_to(_user, 0);
-    }
-
-    // Change relationship status
-    function situation_change(address _user, Status _status) internal user_exists user_paid {
-        
-        Status previous = subs[_user].status;
-        subs[_user].status = _status;
-        emit Change(_user, previous, _status)
-    }
-
-    function now_single(address _user) public view user_exists {
-
-        situation_change(_user, Status.SINGLE);
-    }
-
-    function now_complicated(address _user) public view {
-
-        situation_change(_user, Status.COMPLICATED);
-    }
-
-    function now_dating(address _user) public view {
-
-        situation_change(_user, Status.DATING);
-    }
-
-    function now_married(address _primary) public view {
-
-        situation_change(_user, Status.MARRIED);
+        uint blockJoined;
+        uint blockExpiration;
+        Status status;
+        uint lastStatusChange;
     }
     
+    // Sent whenever a User changes their relationship status
+    event Change (
+        
+        address userAddr,
+        Status statusBefore,
+        Status statusAfter
+    );
+    
+    // Proof of address ownership
+    event Proof (
+        
+        address senderAddr,
+        address receiverAddr,
+        Status status
+    );
+    
+    mapping(address => User) subs;
+    
+    modifier userExists {
+        require(subs[msg.sender].blockJoined != 0);
+        _;
+    }
+    
+    modifier userPaid() {
+        require(subs[msg.sender].blockExpiration <= block.number);
+        _;
+    }
+    
+    function subscribe() public payable {
+        
+        // Must not already have a subscription
+        require(subs[msg.sender].blockJoined == 0);
+        
+        // subs[msg.sender] = User(2,3,Status.SINGLE,4);
+    }
+    
+    function balance() external view returns (uint256) {
+        return address(this).balance;
+    }
+    
+    function myStatus() external view userExists userPaid returns (Status) {
+        return subs[msg.sender].status;
+    }
+    
+    function statusChange(Status _status) internal userExists userPaid {
+        
+        // Status should change
+        require(subs[msg.sender].status != _status);
+        
+        User storage user = subs[msg.sender];
+        Status before = user.status;
+        user.status = _status;
+        
+        emit Change(msg.sender, before, _status);
+    }
+    
+    function nowSingle() external {
+        statusChange(Status.SINGLE);
+    }
+    
+    function nowComplicated() external { 
+        statusChange(Status.COMPLICATED);
+    }
+    
+    function nowDating() external {
+        statusChange(Status.DATING);
+    }
+    
+    function nowMarried() external {
+        statusChange(Status.MARRIED);
+    }
 }
