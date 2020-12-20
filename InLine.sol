@@ -5,11 +5,17 @@ contract InLine {
     // 5700 blocks per day * 30 days per month = 171,000
     uint constant blocksPerMonth = 171000;
     
-    // monthly subscription cost 
-    uint constant weiPerMonth = 3400000000000000;
+    // monthly subscription cost (roughly $5)
+    // uint constant weiPerMonth = 3400000000000000;
+    uint constant weiPerMonth = 100;
     
+    // Once a user subscribes, their status can never be NOTEXIST.
+    // Without NOTEXIST, myStatus() and getStatus() would return 0 for
+    // a non-existent user and a SINGLE user.
+    // { 0: NOTEXIST, 1: SINGLE, 2: COMPLICATED, 3: DATING, 4: MARRIED }
     enum Status {
         
+        NOTEXIST,
         SINGLE, 
         COMPLICATED,
         DATING, 
@@ -18,9 +24,9 @@ contract InLine {
     
     struct User {
         
+        Status status;
         uint blockJoined;
         uint blockExpiration;
-        Status status;
         uint blockLastChange;
     }
     
@@ -47,8 +53,8 @@ contract InLine {
         _;
     }
     
-    modifier userPaid() {
-        require(subs[msg.sender].blockExpiration <= block.number);
+    modifier userPaid {
+        require(subs[msg.sender].blockExpiration >= block.number);
         _;
     }
     
@@ -57,13 +63,21 @@ contract InLine {
         _;
     }
     
+    modifier otherExists(address _userAddr) {
+        require(subs[_userAddr].blockJoined != 0);
+        _;
+    }
+    
     // testing (remove when finished)
-    function balance() external view returns (uint256) {
+    function contractBalance() external view returns (uint) {
         return address(this).balance;
     }
     
     // Unscribed user subscribes, sets status, and adds initial funds
-    function subscribe(uint _months, Status _status) external payable validStatus(_status) {
+    function subscribe(uint _months, Status _status) external payable validStatus(_status) returns (bool) {
+        
+        // Make sure that the user does not already exist
+        require(subs[msg.sender].blockJoined == 0);
         
         if (true == processFunds(_months, msg.value)) { 
             
@@ -71,7 +85,13 @@ contract InLine {
             user.blockJoined = block.number;
             user.status = _status;
             user.blockLastChange = block.number;
+            emit Change(msg.sender, Status.NOTEXIST, _status);
+            
+            return true;
         }
+        
+        // Did not subscribe
+        return false;
     }
     
     // Subscribed user adds additional funds
@@ -123,18 +143,6 @@ contract InLine {
             return false;
         }
     }
-
-    function myStatus() external view userExists userPaid returns (Status) {
-        
-        return subs[msg.sender].status;
-    }
-
-    function getStatus(address _userAddr) external view userExists userPaid returns (Status) {
-        
-        // Other address must have subscribed at some point
-        require(subs[_userAddr].blockJoined != 0);
-        return subs[_userAddr].status;
-    }
     
     function statusChange(Status _status) internal {
         
@@ -150,7 +158,16 @@ contract InLine {
     }
     
     function statusProof(address _recipient) external userExists userPaid {
-        
         emit Proof(msg.sender, _recipient, subs[msg.sender].status);
+    }
+    
+    function myUser() external view userExists userPaid returns(Status, uint, uint, uint) {
+        User storage user = subs[msg.sender];
+        return (user.status, user.blockJoined, user.blockExpiration, user.blockLastChange);
+    }
+    
+    function otherUser(address _userAddr) external view userExists userPaid otherExists(_userAddr) returns(Status, uint, uint, uint) {
+        User storage user = subs[_userAddr];
+        return (user.status, user.blockJoined, user.blockExpiration, user.blockLastChange);
     }
 }
