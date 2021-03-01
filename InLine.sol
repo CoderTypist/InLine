@@ -97,7 +97,7 @@ contract InLine {
         // Make sure that the user does not already exist
         require(subs[msg.sender].timeJoined == 0);
         
-        if (true == processFunds(_months)) { 
+        if (true == processFunds()) { 
             
             User storage user = subs[msg.sender];
             user.timeJoined = now;
@@ -113,24 +113,22 @@ contract InLine {
     }
     
     // Subscribed user adds additional funds
-    function addFunds(uint _months)
+    function addFunds()
         external
         payable
         userExists
     {
-        processFunds(_months);
+        processFunds();
     }
     
     // Called by subscribe() and addFunds() for updating user.timeExpiration
-    function processFunds(uint _months) internal returns (bool) {
-        
-        require(_months > 0);
+    function processFunds() internal returns (bool) {
         
         uint monthsPossible = msg.value / weiPerMonth;
-        uint numWeeks = _months*4;
+        uint numWeeks = monthsPossible*4;
         
         // if enough wei was provided to pay for the specified _months
-        if (monthsPossible >= _months) {
+        if (monthsPossible >= 0) {
             
             User storage user = subs[msg.sender];
             
@@ -149,12 +147,12 @@ contract InLine {
                 
                 // if the users subscription has not expired
                 else {
-                    user.timeExpiration += numWeeks;
+                    user.timeExpiration += (numWeeks * 1 weeks);
                 }
             }
             
             // send change back
-            uint change = msg.value - (_months * weiPerMonth);
+            uint change = msg.value - (monthsPossible * weiPerMonth);
             msg.sender.transfer(change);
             
             return true;
