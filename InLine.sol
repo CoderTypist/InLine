@@ -1,8 +1,13 @@
 pragma solidity 0.5.0;
 
+// Error: USER CAN SUBSCRIBE FOR FREE!!! (Fixed by changing a >= to >)
+// This means that they can update their status for free. We want them to pay. 
+
 contract InLine {
     
     // TODO: Make sure the contract works as expected so far
+    //       - subscribe and add funds works
+    //            - user.timeExpiration is properly updated
     // TODO: Allow the contract owner to adjust weiPerMonth
     //       - public function to check weiPerMonth
     //       - in addFunds, user can specify expected max weiPerMonth
@@ -13,6 +18,10 @@ contract InLine {
     // At the time of writing the contract, $5 is roughly 3,400,000,000,000,000 wei
     // 1 finney is 1,000,000,000,000,000 wei
     // 3,400,000,000,000,000 wei can be expressed as 3.4 finney
+    
+    // ONLY SET TO 100 FOR TESTING
+    // ONLY SET TO 100 FOR TESTING
+    // ONLY SET TO 100 FOR TESTING
     uint weiPerMonth = 100;
     
     // Once a user subscribes, their status can never be NOTEXIST.
@@ -87,7 +96,7 @@ contract InLine {
     }
     
     // Unscribed user subscribes, sets status, and adds initial funds
-    function subscribe(uint _months, Status _status)
+    function subscribe(Status _status)
         external
         payable
         validStatus(_status)
@@ -128,13 +137,18 @@ contract InLine {
         uint numWeeks = monthsPossible*4;
         
         // if enough wei was provided to pay for the specified _months
-        if (monthsPossible >= 0) {
+        if (monthsPossible > 0) {
             
             User storage user = subs[msg.sender];
             
             // if the user has not previously subscribed - invoked by subscribe()
             if (0 == user.timeJoined) {
-                user.timeExpiration = now + (numWeeks * 1 weeks);
+                
+                // ONLY FOR TESTING - REMOVE LATER
+                // ONLY FOR TESTING - REMOVE LATER
+                // ONLY FOR TESTING - REMOVE LATER
+                user.timeExpiration = now + (monthsPossible * 1 seconds);
+                // user.timeExpiration = now + (numWeeks * 1 weeks);
             }
             
             // if the user has previously subscribed - invoked by addFunds()
@@ -142,12 +156,24 @@ contract InLine {
                 
                 // if the users subscription has expired
                 if (user.timeExpiration < now) {
-                    user.timeExpiration = now + (numWeeks * 1 weeks);
+                    
+                    // ONLY FOR TESTING - REMOVE LATER
+                    // ONLY FOR TESTING - REMOVE LATER
+                    // ONLY FOR TESTING - REMOVE LATER
+                    user.timeExpiration += (monthsPossible * 1 seconds);
+                    
+                    // user.timeExpiration = now + (numWeeks * 1 weeks);
                 }
                 
                 // if the users subscription has not expired
                 else {
-                    user.timeExpiration += (numWeeks * 1 weeks);
+                    
+                    // ONLY FOR TESTING - REMOVE LATER
+                    // ONLY FOR TESTING - REMOVE LATER
+                    // ONLY FOR TESTING - REMOVE LATER
+                    user.timeExpiration += (monthsPossible * 1 seconds);
+                    
+                    //user.timeExpiration += (numWeeks * 1 weeks);
                 }
             }
             
@@ -186,26 +212,37 @@ contract InLine {
         emit Proof(msg.sender, _recipient, subs[msg.sender].status);
     }
     
+    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
+    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
+    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
     function myUser()
         external
         view
         userExists
-        userPaid
         returns(Status, uint, uint, uint)
     {
         User storage user = subs[msg.sender];
         return (user.status, user.timeJoined, user.timeExpiration, user.timeLastChange);
     }
     
+    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
+    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
+    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
     function getUser(address _userAddr)
         external
         view
         userExists
-        userPaid
         otherExists(_userAddr)
         returns(Status, uint, uint, uint)
     {
         User storage user = subs[_userAddr];
         return (user.status, user.timeJoined, user.timeExpiration, user.timeLastChange);
+    }
+    
+    // REMOVE LATER, ONLY FOR TESTING
+    // REMOVE LATER, ONLY FOR TESTING
+    // REMOVE LATER, ONLY FOR TESTING
+    function myBalance() public view returns(uint) {
+        return msg.sender.balance;
     }
 }
