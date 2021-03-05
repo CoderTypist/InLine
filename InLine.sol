@@ -1,26 +1,12 @@
 pragma solidity 0.5.0;
 
+import "./Unit.sol";
+
 contract InLine {
     
-    // TODO: Make sure the contract works as expected so far
-    //       - subscribe and add funds works
-    //            - user.timeExpiration is properly updated
-    // TODO: Allow the contract owner to adjust weiPerMonth
-    //       - public function to check weiPerMonth
-    //       - in addFunds, user can specify expected max weiPerMonth
-    //         in case weiPerMonth suddenly
-    // TODO: Limit how far ahead a person can pay for subscription
-    
-    // monthly subscription cost (roughly $5)
-    // At the time of writing the contract, $5 is roughly 3,400,000,000,000,000 wei
-    // 1 finney is 1,000,000,000,000,000 wei
-    // 3,400,000,000,000,000 wei can be expressed as 3.4 finney
-    
-    // ONLY SET TO 100 FOR TESTING
-    // ONLY SET TO 100 FOR TESTING
-    // ONLY SET TO 100 FOR TESTING
-    uint weiPerMonth = 100;
     address owner;
+    uint weiPerMonth;
+    mapping(address => User) subs;
     
     // Once a user subscribes, their status can never be NOTEXIST.
     // Without NOTEXIST, myStatus() and getStatus() would return 0 for
@@ -59,15 +45,13 @@ contract InLine {
         Status status
     );
     
-    mapping(address => User) subs;
-    
     modifier userExists {
-        require(subs[msg.sender].timeJoined != 0);
+        require(subs[msg.sender].timeJoined != 0, "User does not exist");
         _;
     }
     
     modifier userPaid {
-        require(subs[msg.sender].timeExpiration >= now);
+        require(subs[msg.sender].timeExpiration >= now, "User has not paid");
         _;
     }
     
@@ -80,43 +64,34 @@ contract InLine {
     }
     
     modifier otherExists(address _userAddr) {
-        require(subs[_userAddr].timeJoined != 0);
+        require(subs[_userAddr].timeJoined != 0, "Other user does not exist");
         _;
     }
     
-    /*
-     * Why is it necessary to specify _months when months can be calculated from the value?
-     * Let's say that the price per month is 100 wei and that a person wants to sign up for 4 months.
-     * The user creates a transaction signing them up for 4 months and sends 400 wei.
-     * Let's say than the owner of the contract then creates a transaction adjusing the price per month to 50 wei.
-     * If the owner's transaction is included in the block first, the price per month
-     * will change before the user's transaction is processed.
-     * Since the user sent 400 wei, they would be forced into an 8 month subscription that they might not have wanted.
-     * By specifying how many months they wanted, the user will be refunded any extra wei. 
-     * 
-     * Why is it necessary to specify _maxWeiPerMonth?
-     * Let's say that the price per month is 100 wei and that a person wants to sign up for 4 months
-     * Given that the price per month can change, a person could send extra wei to account for a sudden change in price
-     * Any extra wei will be returned to the sender
-     */
     modifier verifyPayment(uint _months, uint _maxWeiPerMonth) {
         
         // Make sure the user is willing to pay the current monthly fee
         // This is to avoid the contract owner unexpectedly changing the monthly fee
-        require(_maxWeiPerMonth <= weiPerMonth);
+        require(_maxWeiPerMonth <= weiPerMonth, "weiPerMonth is greater than desired max monthly value");
         
         // Make sure that enough ether was sent
-        require((msg.value/weiPerMonth)>=_months);
+        require((msg.value/weiPerMonth) >= _months, "Insufficient wei received");
+        
+        // timeExpiration cannot be more than 1 year in the future
+        // weiPerMonth can change, so users should not be able to buy too much in advance
+        require( (subs[msg.sender].timeExpiration+Unit.toAprxMonths(_months)) < now + Unit.toAprxYears(1), 
+            "Subscription cannot go further than a year into the future");
         _;
     }
     
     modifier isOwner() {
-        require(msg.sender == owner);
+        require(msg.sender == owner, "Not contract owner");
         _;
     }
     
     constructor() public {
         owner = msg.sender;
+        weiPerMonth = 1 finney;
     }
     
     // Unscribed user subscribes, sets status, and adds initial funds
@@ -127,11 +102,12 @@ contract InLine {
         verifyPayment(_months, _maxWeiPerMonth)
     {
         // Make sure that the user does not already exist
-        require(subs[msg.sender].timeJoined == 0);
+        require(subs[msg.sender].timeJoined == 0, "Existing user cannot subscribe");
         
         // Creates an account for the user
         processFunds(_months);
         
+        // Only finish creating a users account if the funds were successfully processed
         User storage user = subs[msg.sender];
         user.timeJoined = now;
         user.status = _status;
@@ -146,28 +122,18 @@ contract InLine {
         userExists
         verifyPayment(_months, _maxWeiPerMonth)
     {
-        // Make sure the user is willing to pay the current monthly fee
-        // This is to avoid the contract owner unexpectedly changing the monthly fee
-        require(_maxWeiPerMonth <= weiPerMonth);
-        
         processFunds(_months);
     }
     
     // Called by subscribe() and addFunds() for updating user.timeExpiration
     function processFunds(uint _months) internal {
         
-        uint numWeeks = _months*4;
         User storage user = subs[msg.sender];
         
         // if the user has not previously subscribed - invoked by subscribe()
         if (0 == user.timeJoined) {
             
-            // ONLY FOR TESTING - REMOVE LATER
-            // ONLY FOR TESTING - REMOVE LATER
-            // ONLY FOR TESTING - REMOVE LATER
-            user.timeExpiration = now + (numWeeks * 1 seconds);
-            
-            // user.timeExpiration = now + (numWeeks * 1 weeks);
+            user.timeExpiration = now + Unit.toAprxMonths(_months);
         }
         
         // if the user has previously subscribed - invoked by addFunds()
@@ -176,23 +142,13 @@ contract InLine {
             // if the users subscription has expired
             if (user.timeExpiration < now) {
                 
-                // ONLY FOR TESTING - REMOVE LATER
-                // ONLY FOR TESTING - REMOVE LATER
-                // ONLY FOR TESTING - REMOVE LATER
-                user.timeExpiration += (numWeeks * 1 seconds);
-                
-                // user.timeExpiration = now + (numWeeks * 1 weeks);
+                user.timeExpiration = now + Unit.toAprxMonths(_months);
             }
             
             // if the users subscription has not expired
             else {
-                
-                // ONLY FOR TESTING - REMOVE LATER
-                // ONLY FOR TESTING - REMOVE LATER
-                // ONLY FOR TESTING - REMOVE LATER
-                user.timeExpiration += (numWeeks * 1 seconds);
-                
-                //user.timeExpiration += (numWeeks * 1 weeks);
+
+                user.timeExpiration += Unit.toAprxMonths(_months);
             }
         }
     }
@@ -218,26 +174,22 @@ contract InLine {
         emit Proof(msg.sender, _recipient, subs[msg.sender].status);
     }
     
-    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
-    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
-    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
     function myUser()
         external
         view
         userExists
+        userPaid
         returns(Status, uint, uint, uint)
     {
         User storage user = subs[msg.sender];
         return (user.status, user.timeJoined, user.timeExpiration, user.timeLastChange);
     }
     
-    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
-    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
-    // ADD IN userPaid LATER (after userExists), IT WAS REMOVED FOR TESTING
     function getUser(address _userAddr)
         external
         view
         userExists
+        userPaid
         otherExists(_userAddr)
         returns(Status, uint, uint, uint)
     {
@@ -248,30 +200,4 @@ contract InLine {
     function setWeiPerMonth(uint _weiPerMonth) external isOwner {
         weiPerMonth = _weiPerMonth;
     }
-    
-    // FOR TESTING, REMOVE LATER
-    // #####################################################################################
-    
-    // testing (remove when finished)
-    function contractBalance()
-        external
-        view
-        returns (uint)
-    {
-        return address(this).balance;
-    }
-    
-    function myBalance() public view returns(uint) {
-        return msg.sender.balance;
-    }
-    
-    function getOwner() public view returns(address) {
-        return owner;
-    }
-    
-    function getWeiPerMonth() public view returns(uint) {
-        return weiPerMonth;
-    }
-    
-    // #####################################################################################
 }
