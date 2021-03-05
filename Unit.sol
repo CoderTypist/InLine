@@ -27,7 +27,7 @@ library Unit {
      *
      * Be aware that Cast.toAprxMonths(12) != Cast.toAprxYears(1)
      *
-     * Cast.toAprxMonths(1) = 360 days
+     * Cast.toAprxMonths(12) = 360 days
      * Cast.toAprxYears(1) = 365
      * 360 days != 365 days
      * 
