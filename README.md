@@ -1,4 +1,4 @@
 # InLine
 Blockchain Relationship Status
 
-Work in progress. Not yet complete. 
+Completed 3/15/2021. Documentation coming soon.
