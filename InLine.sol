@@ -79,7 +79,7 @@ contract InLine {
         
         // timeExpiration cannot be more than 1 year in the future
         // weiPerMonth can change, so users should not be able to buy too much in advance
-        require( (subs[msg.sender].timeExpiration+Unit.toAprxMonths(_months)) < now + Unit.toAprxYears(1), 
+        require( (subs[msg.sender].timeExpiration + Unit.toAprxMonths(_months)) < now + Unit.toAprxYears(1), 
             "Subscription cannot go further than a year into the future");
         _;
     }
